@@ -1,0 +1,57 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/domain",
+    "crates/store",
+    "crates/platform-xdg",
+    "crates/adapter-wa",
+    "crates/ui-gtk4",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "GPL-3.0-or-later"
+authors = ["Rabimba Karanjai"]
+
+[workspace.dependencies]
+anyhow = "1.0"
+async-channel = "2.5"
+async-trait = "0.1"
+blake3 = "1.5"
+bytes = "1.7"
+chacha20poly1305 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+env_logger = "0.11"
+futures = "0.3"
+gtk4 = { version = "0.9", features = ["v4_14"] }
+hex = "0.4"
+hmac = "0.12"
+libadwaita = { version = "0.7", features = ["v1_5"] }
+log = "0.4"
+qrcode = { version = "0.14", default-features = false }
+rand = "0.8"
+rusqlite = { version = "0.39", features = ["bundled-sqlcipher", "backup", "functions"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+thiserror = "2.0"
+tokio = { version = "1.40", features = ["full"] }
+uuid = { version = "1.11", features = ["v4", "v7", "serde"] }
+whatsapp-rust = { version = "0.7.0", default-features = false, features = [
+    "sqlite-storage",
+    "tokio-transport",
+    "tokio-runtime",
+    "ureq-client",
+    "tokio-native",
+    "signal",
+    "tracing",
+] }
+zbus = { version = "5.1", default-features = true }
+
+whatsnative-domain = { path = "crates/domain" }
+whatsnative-store = { path = "crates/store" }
+whatsnative-platform-xdg = { path = "crates/platform-xdg" }
+whatsnative-adapter-wa = { path = "crates/adapter-wa" }

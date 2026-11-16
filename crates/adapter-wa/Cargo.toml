@@ -1,0 +1,31 @@
+[package]
+name = "whatsnative-adapter-wa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = ["voip-mlow"]
+voip-mlow = ["whatsapp-rust/voip-mlow"]
+
+[dependencies]
+anyhow.workspace = true
+async-channel.workspace = true
+async-trait.workspace = true
+blake3.workspace = true
+bytes.workspace = true
+chrono.workspace = true
+ed25519-dalek.workspace = true
+futures.workspace = true
+hex.workspace = true
+log.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+whatsapp-rust.workspace = true
+whatsnative-domain.workspace = true
+whatsnative-store.workspace = true

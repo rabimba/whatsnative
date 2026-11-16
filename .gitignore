@@ -1,0 +1,21 @@
+# Build artifacts
+/target
+**/*.rs.bk
+
+# Local databases / WAL sidecars
+*.db
+*.db-shm
+*.db-wal
+
+# Runtime fixtures & diagnostics output
+inbox.jsonl
+diagnostics-*.json
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local environment overrides
+.env

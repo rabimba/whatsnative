@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.rabimba.kestrel</id>
+  <name>Kestrel Companion</name>
+  <summary>Native GTK4 + libadwaita companion messaging client for Linux</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.rabimba">
+    <name>Rabimba Karanjai</name>
+  </developer>
+  <description>
+    <p>
+      Kestrel Companion (binary: whatsnative) is a compiled, zero-WebView native Linux
+      companion messaging desktop client built with Rust, GTK4, libadwaita, SQLCipher,
+      and XDG Desktop Portals.
+    </p>
+    <p>
+      Disclaimer: Kestrel Companion is an independent third-party open-source project
+      and is not affiliated with, authorized, maintained, sponsored, or endorsed by
+      WhatsApp LLC or Meta Platforms, Inc.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.rabimba.kestrel.desktop</launchable>
+  <provides>
+    <binary>whatsnative</binary>
+  </provides>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </recommends>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+    <content_attribute id="social-audio">intense</content_attribute>
+  </content_rating>
+  <releases>
+    <release version="0.1.0" date="2026-11-09">
+      <description>
+        <p>Initial Phase 0 / Phase 1A native Linux companion release with SQLCipher encryption at rest, QR and 8-character phone-code linking, encrypted FTS5 search, XDG Portal integration, and incoming call signaling banners.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Kestrel Companion
+GenericName=Encrypted Companion Messenger
+Comment=Native GTK4 + libadwaita companion messaging client for Linux
+Exec=whatsnative
+Icon=io.github.rabimba.kestrel
+Terminal=false
+Categories=Network;InstantMessaging;Chat;GTK;
+Keywords=chat;messaging;companion;e2ee;signal;
+StartupNotify=true
+StartupWMClass=io.github.rabimba.kestrel
+X-GNOME-UsesNotifications=true

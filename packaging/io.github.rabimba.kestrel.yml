@@ -1,0 +1,37 @@
+app-id: io.github.rabimba.kestrel
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: whatsnative
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=xdg-run/pipewire-0
+  # XDG Portals handle notifications, background status, secrets, and file selection natively
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --system-talk-name=org.freedesktop.login1
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/whatsnative/cargo
+
+modules:
+  - name: whatsnative
+    buildsystem: simple
+    build-commands:
+      - cargo --offline build --release --bin whatsnative
+      - install -Dm755 target/release/whatsnative /app/bin/whatsnative
+      - install -Dm644 packaging/io.github.rabimba.kestrel.desktop /app/share/applications/io.github.rabimba.kestrel.desktop
+      - install -Dm644 packaging/io.github.rabimba.kestrel.metainfo.xml /app/share/metainfo/io.github.rabimba.kestrel.metainfo.xml
+    sources:
+      - type: dir
+        path: ..
