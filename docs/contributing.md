@@ -16,7 +16,7 @@ Thanks for helping build a native, private Linux companion. This document covers
 3. Always develop against the mock fixture first:
 
    ```bash
-   cargo run -p whatsnative -- --mock --profile-dir /tmp/kestrel-dev
+   cargo run -p whatsnative -- --mock --profile-dir /tmp/whatsnative-dev
    ```
 
    Using `--profile-dir` keeps your work isolated from any real companion profile. **Never test against a personal phone number.**
@@ -40,7 +40,7 @@ All four layers must stay independent. Check the dependency direction in [`archi
 | `crates/platform-xdg` | All D-Bus/portals/XDG/filesystem details. Never import GTK or wire types. |
 | `crates/adapter-wa` | The **only** crate allowed to import `whatsapp_rust`. Never expose a wire type in its public API — map into `whatsnative-domain` types. |
 | `crates/ui-gtk4` | GTK4/libadwaita UI. Read local projections only; send `EngineCommand`s. Never touch wire or SQL directly. |
-| `packaging/` | Flatpak/desktop/AppStream metadata. Keep the trademark-clean app ID. |
+| `packaging/` | Flatpak/desktop/AppStream metadata. Keep the app ID (`io.github.rabimba.whatsnative`) consistent. |
 
 ## Safety rules
 
@@ -60,7 +60,7 @@ All four layers must stay independent. Check the dependency direction in [`archi
 Do **not** open a public issue with real identifiers or message content. Instead:
 
 ```bash
-cargo run -p whatsnative -- --mock --export-diagnostics /tmp/kestrel-diag.json
+cargo run -p whatsnative -- --mock --export-diagnostics /tmp/whatsnative-diag.json
 ```
 
 Attach the redacted bundle and contact the maintainer privately through GitHub. See [`security.md`](security.md) for what the bundle contains.

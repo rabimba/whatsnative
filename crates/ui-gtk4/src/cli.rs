@@ -1,4 +1,4 @@
-//! Command-line flag parser for `whatsnative` (`Kestrel Companion`), supporting
+//! Command-line flag parser for `whatsnative`, supporting
 //! deterministic `--mock` mode, custom XDG profile roots, headless diagnostic bundle
 //! export, and 8-character phone-number pairing flags.
 
@@ -87,7 +87,7 @@ impl CliArgs {
 
     pub fn usage_text() -> &'static str {
         "\
-Kestrel Companion (whatsnative) — Native Linux Companion Messaging Client
+whatsnative — Native Linux Companion Messaging Client
 Zero Electron / Zero WebView · GTK4 + libadwaita + SQLCipher + XDG Portals
 
 USAGE:
@@ -117,13 +117,16 @@ mod tests {
             "whatsnative",
             "--mock",
             "--profile-dir",
-            "/tmp/kestrel-prof",
+            "/tmp/whatsnative-prof",
             "--export-diagnostics",
             "/tmp/diag.json",
         ])
         .unwrap();
         assert!(parsed.mock_mode);
-        assert_eq!(parsed.profile_dir, Some(PathBuf::from("/tmp/kestrel-prof")));
+        assert_eq!(
+            parsed.profile_dir,
+            Some(PathBuf::from("/tmp/whatsnative-prof"))
+        );
         assert_eq!(
             parsed.export_diagnostics,
             Some(PathBuf::from("/tmp/diag.json"))

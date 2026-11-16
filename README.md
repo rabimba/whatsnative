@@ -1,138 +1,172 @@
-# Kestrel Companion (`whatsnative`)
+# whatsnative
 
-**A compiled, zero-Electron / zero-WebView native Linux companion client for WhatsApp Multi-Device.**
+A native Linux companion app for WhatsApp Multi-Device.
 
-Built with **Rust 1.94**, **GTK4 4.14**, **libadwaita 1.5**, **SQLCipher**, and **XDG Desktop Portals**.
+It is a real, compiled desktop application. It does **not** bundle a browser. There is no Electron and no WebView. It is written in Rust and uses GTK4, libadwaita, SQLCipher, and the standard Linux desktop services.
 
-> **Trademark & affiliation notice:** Kestrel Companion (`io.github.rabimba.kestrel`, binary `whatsnative`) is an independent open-source project. It is **not** affiliated with, authorized, sponsored, or endorsed by WhatsApp LLC or Meta Platforms, Inc. The public brand name was deliberately chosen to comply with third-party trademark policies (no `"Whats*"` branding).
-
----
-
-## Why this exists (Motivation)
-
-Linux is the one major desktop platform with **no official native WhatsApp client**. The options available today all make the same trade-off: they wrap WhatsApp Web in a browser engine instead of being a real native application.
-
-That trade-off has real costs for everyday users:
-
-| Problem with browser/webview wrappers | How Kestrel Companion approaches it |
-| :--- | :--- |
-| Hundreds of MB of idle RAM from a bundled browser engine | A compiled GTK4 binary that idles in **tens of MB**, with a GPU-less background worker |
-| Messages live in a web session; offline search is slow or absent | A local-first **SQLCipher** vault with **FTS5** full-text search in **< 100 ms** |
-| No native desktop calling parity with the official macOS companion | Call-signaling state machines are built in from day one, ready for Phase 2 voice/video |
-| Frozen distro packages strand users on outdated protocol versions | Fast-updating, publisher-controlled channels (Flatpak/AppImage) plus a **signed pre-connect safety gate** |
-| Opaque binaries that phone home with unknown data | Auditable Rust code, **zero-PII** diagnostics, and all message data stays on your disk |
-
-But "just write a native client" is not enough. An unofficial client speaks WhatsApp's undocumented protocol, so a naive reconnect loop can trip anti-abuse systems and get a **personal phone number banned** — cutting someone off from family chats, work groups, and two-factor login codes. That risk shaped the entire architecture: a signed compatibility manifest is verified *before* any socket opens, outbound traffic is human-paced, unknown server responses trip an automatic read-only circuit breaker, and Signal ratchet state is protected against binary rollbacks.
-
-The result is a local-first, safety-first companion: fast, encrypted, and designed to fail safe rather than fail your account.
-
-For the full problem analysis, risks, and design decisions, see **[`docs/motivation.md`](docs/motivation.md)** and **[`concepts_brief.md`](concepts_brief.md)**.
+> **Independent project.** whatsnative (`io.github.rabimba.whatsnative`) is open source. It is not affiliated with, authorized, sponsored, or endorsed by WhatsApp LLC or Meta Platforms, Inc.
 
 ---
 
-## Highlights
+## Why we built whatsnative
 
-- 🧱 **Hexagonal crate boundaries** — protocol churn never leaks into the UI or database.
-- 🔐 **Encrypted at rest** — SQLCipher `vault.db`, ChaCha20-Poly1305 media cache, zero PII in `$XDG_CONFIG_HOME`.
-- 🔎 **Local-first** — raw decrypted protobufs committed *before* network ACKs; rebuildable FTS5 index.
-- 🛡️ **Account-safety guardrails** — signed `CompatManifest`, circuit breakers, human-paced outbound limiter, per-group retry quarantine.
-- 🖥️ **Truly native** — GTK4/libadwaita adaptive split view, BiDi/RTL/CJK/Emoji rendering, Wayland/X11, XDG portals.
-- 📞 **Call-aware** — live incoming-call banners and missed-call logs from Phase 1, ready for Phase 2 SRTP media.
-- 🧪 `--mock` — a deterministic, zero-account offline demo with 60+ searchable fixture messages.
-- 🩺 **Zero-PII diagnostics** — salted-HMAC redacted bundles that can be shared safely.
+Linux has no official native WhatsApp desktop app. The apps people use today are web pages wrapped in a browser engine. That works, but it costs you:
+
+- **Memory.** A browser engine uses hundreds of megabytes even when you are not chatting.
+- **Your own data.** Your messages live in a web session, not in a database on your computer.
+- **Offline search.** Without a local database, finding an old message is slow or impossible.
+- **Desktop features.** Browser wrappers cannot offer the calling and desktop integration that a native app can.
+
+A native app should be fast, private, and feel at home on Linux. It should open quickly, search your messages without the internet, keep your history encrypted on your own disk, and use your desktop's notifications and background services.
+
+### The risk that shaped the design
+
+There is another reason to be careful. WhatsApp does not offer a public API for personal accounts. An unofficial app has to speak WhatsApp's private protocol. If it reconnects too often, sends messages too fast, or uses an old protocol version, WhatsApp can ban the phone number. For a real person, that can mean losing family chats, work groups, and two-factor login codes.
+
+So whatsnative is built to **fail safely**:
+
+- It checks a signed compatibility file before it opens a connection.
+- It slows outgoing messages to a human pace.
+- If the server sends something unexpected, it stops reconnecting and switches to read-only mode instead of retrying.
+- It saves each message to your local database before it tells the server it arrived.
+
+The result is a local-first, safety-first companion. It is fast, encrypted, and designed to protect your account.
+
+For the full story, read [Why this project exists](docs/motivation.md).
 
 ---
 
-## Architecture at a glance
+## What it can do today
 
-| Crate | Path | Responsibility |
+- **Native interface.** A GTK4/libadwaita window that adapts to your screen size. Correct text layout for Arabic, Hebrew, Chinese, Japanese, and emoji.
+- **Local, encrypted storage.** A SQLCipher database on your disk. Full-text search usually returns results in under 100 ms, even offline.
+- **Chats.** One-to-one and group messages, replies, reactions, edits, deletes, media attachments, and image paste.
+- **Safety guardrails.** A signed pre-connect check, rate limiting, and circuit breakers that protect your number.
+- **Call alerts.** Incoming call banners and missed-call entries. Real voice and video calls are planned for a later phase.
+- **A demo mode.** Run `--mock` to try the whole app without a phone number.
+- **Private diagnostics.** Export a bug report with phone numbers and IDs replaced by hashes.
+
+---
+
+## How the code is organized
+
+The project is split into five parts. Each part has one job, and they talk to each other through simple, shared types.
+
+| Part | Folder | What it does |
 | :--- | :--- | :--- |
-| `whatsnative-domain` | [`crates/domain`](crates/domain) | Pure Rust contracts: `CanonicalPeerId`, `ConversationId`, `TimelineMessage`, `ActiveCallBanner`, Ed25519-verifiable `CompatManifest`. Zero protocol/DB/DBus/UI deps. |
-| `whatsnative-store` | [`crates/store`](crates/store) | Rollback-safe crypto guard, encrypted `vault.db` (WAL), atomic `@lid` ↔ phone-thread merge, raw protobuf retention, FTS5 search, encrypted LRU media cache. |
-| `whatsnative-platform-xdg` | [`crates/platform-xdg`](crates/platform-xdg) | XDG layout (`0700`), live portal capability probing, secret-service key unlock, `login1` sleep/wake watchdog, redacted diagnostics. |
-| `whatsnative-adapter-wa` | [`crates/adapter-wa`](crates/adapter-wa) | Isolated `whatsapp-rust` companion adapter with safety guardrails, call signaling, and the `--mock` fixture harness. |
-| `whatsnative` | [`crates/ui-gtk4`](crates/ui-gtk4) | Native GTK4 + libadwaita shell, Cairo QR canvas, link-code flow, Pango text rendering, file dialogs, clipboard paste. |
+| `whatsnative-domain` | `crates/domain` | The shared vocabulary: chats, messages, call banners, and the safety checks. No network or database code. |
+| `whatsnative-store` | `crates/store` | The encrypted database, search index, and media cache. |
+| `whatsnative-platform-xdg` | `crates/platform-xdg` | Linux desktop services: notifications, background activity, secret storage, and diagnostics. |
+| `whatsnative-adapter-wa` | `crates/adapter-wa` | The WhatsApp protocol code, kept in one place, plus the `--mock` demo data. |
+| `whatsnative` | `crates/ui-gtk4` | The GTK4 application you see and use. |
 
-See **[`docs/architecture.md`](docs/architecture.md)** for the full design and **[`docs/security.md`](docs/security.md)** for the threat model.
+This split means a change to the WhatsApp protocol does not force a rewrite of the interface or the database. Read [the architecture guide](docs/architecture.md) for more.
 
 ---
 
-## Quick start
+## Get started
 
-### System dependencies
+### Install the build tools
+
+You need Rust 1.94 or newer, plus the GTK4 and libadwaita development files.
 
 ```bash
 # Ubuntu / Debian
 sudo apt install build-essential pkg-config libssl-dev libgtk-4-dev libadwaita-1-dev libdbus-1-dev
-```
 
-```bash
 # Fedora
 sudo dnf install gcc make pkgconf-pkg-config openssl-devel gtk4-devel libadwaita-devel dbus-devel
 ```
 
-You also need a recent Rust toolchain (`rust-version = 1.94`, edition 2024) — install it from [rustup.rs](https://rustup.rs).
+Install Rust from [rustup.rs](https://rustup.rs) if you do not have it yet.
 
-### 1. Try it with zero account (recommended first)
+### Try the demo first
 
-Launch the full native client with pre-seeded 1:1, group, BiDi/RTL/CJK/Emoji, poll, view-once-privacy-stub, channel, and 60+ FTS5-searchable messages — no phone number required:
+This needs no phone number and changes no real account.
 
 ```bash
 cargo run -p whatsnative -- --mock
 ```
 
-> 💡 Send `/call` in any mock chat (or use **Menu → Simulate Incoming Call**) to exercise the live incoming-call banner and call-decline flow. Press `Ctrl+K` to try the search.
+Things to try:
 
-### 2. Pair a real companion device
+- Press `Ctrl+K` to search the demo messages.
+- Send `/call` in any chat, or use **Menu → Simulate Incoming Call**, to see a call alert.
+- Paste an image with `Ctrl+V` to send it.
+
+To keep the demo separate from your real data:
 
 ```bash
-# QR-code pairing
+cargo run -p whatsnative -- --mock --profile-dir /tmp/whatsnative-demo
+```
+
+### Use your own account
+
+```bash
+# Pair with a QR code
 cargo run --release -p whatsnative
 
-# Pre-fill an 8-character phone link code
+# Or pre-fill an 8-character link code
 cargo run --release -p whatsnative -- --phone 14155550199
 ```
 
-> ⚠️ **Account safety:** this is an unofficial client. Read **[`docs/security.md`](docs/security.md)** before pairing a personal number. A first-run risk consent and a signed pre-connect compatibility check protect you; `--allow-unverified-protocol` exists only as a documented power-user escape hatch.
+Please read [the security guide](docs/security.md) before you pair a personal number. It explains the safety checks and what you give up if you disable them.
 
-### 3. Export a redacted diagnostic bundle (headless)
+### Export a private bug report
+
+This works without a visible desktop.
 
 ```bash
-cargo run -p whatsnative -- --mock --export-diagnostics /tmp/kestrel-diag.json
+cargo run -p whatsnative -- --mock --export-diagnostics /tmp/whatsnative-diag.json
 ```
 
 ---
 
-## Command-line reference
+## Command line options
 
-| Flag | Description |
+| Option | What it does |
 | :--- | :--- |
-| `--mock` | Launch the offline, zero-account fixture archive (no phone required). |
-| `--profile-dir <DIR>` | Use an isolated XDG data/state/cache/config root (useful for tests). |
-| `--passphrase <PASS>` | Unlock or initialize a passphrase-wrapped SQLCipher vault. |
-| `--phone <DIGITS>` | Request an 8-character phone-number companion link code. |
-| `--pair-code <CODE>` | Supply a custom 8-character link code together with `--phone`. |
-| `--export-diagnostics <FILE.json>` | Export a zero-PII salted-HMAC diagnostic bundle and exit. |
-| `--inspect-data` | Headless vault integrity / data-attribution audit. |
-| `--allow-unverified-protocol` | Power-user override of the `CompatManifest` safety quarantine. |
-| `-h`, `--help` | Print usage. |
-| `-V`, `--version` | Print version. |
+| `--mock` | Start the offline demo. No phone needed. |
+| `--profile-dir <DIR>` | Keep all app files in a separate folder. Useful for tests. |
+| `--passphrase <PASS>` | Unlock or create a database protected by a passphrase. |
+| `--phone <DIGITS>` | Ask for an 8-character link code for this phone number. |
+| `--pair-code <CODE>` | Use a specific link code together with `--phone`. |
+| `--export-diagnostics <FILE.json>` | Write a private bug report and exit. |
+| `--inspect-data` | Check the database for problems and exit. |
+| `--allow-unverified-protocol` | Power-user override of the safety check. Not recommended. |
+| `-h`, `--help` | Show help. |
+| `-V`, `--version` | Show the version. |
 
 ---
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
+| Key | Action |
 | :--- | :--- |
-| `Ctrl+K` | Focus the global `<100 ms` SQLCipher FTS5 search bar |
-| `Enter` | Send message (or save an edit) |
-| `Shift+Enter` | Insert a newline in the composer |
-| `Ctrl+V` | Paste clipboard text, or send a clipboard screenshot/image directly as PNG |
-| `Esc` | Cancel an active Reply or Edit |
+| `Ctrl+K` | Focus the search bar |
+| `Enter` | Send a message, or save an edit |
+| `Shift+Enter` | Add a new line in the message box |
+| `Ctrl+V` | Paste text, or send an image from the clipboard |
+| `Esc` | Cancel a reply or an edit |
 
 ---
 
-## Testing
+## Where your files go
+
+whatsnative follows the XDG folder rules. All folders are created with private (`0700`) permissions.
+
+| Purpose | Folder |
+| :--- | :--- |
+| App data and encrypted database | `$XDG_DATA_HOME/whatsnative/` |
+| Logs and diagnostics state | `$XDG_STATE_HOME/whatsnative/` |
+| Media cache | `$XDG_CACHE_HOME/whatsnative/` |
+| Settings (no personal data) | `$XDG_CONFIG_HOME/whatsnative/` |
+
+Use `--profile-dir <DIR>` to put all four folders somewhere else.
+
+---
+
+## Testing and contributing
 
 ```bash
 cargo test --workspace
@@ -140,22 +174,30 @@ cargo clippy --workspace --all-targets
 cargo fmt --all -- --check
 ```
 
-The `--mock` mode is intentionally deterministic so contributors can develop and test the entire UI without ever touching a real phone number.
+The demo mode is deterministic, so you can test the interface without a real phone number. See [Contributing](docs/contributing.md) before you open a pull request.
+
+If you find a bug, please do not include real phone numbers or messages in a public issue. Export a redacted report with `--export-diagnostics` instead.
 
 ---
 
-## Project status
+## Where the project is going
 
-Kestrel Companion implements **Phase 0** (safety foundation) and **Phase 1A** (daily-driver E2EE core). Richer messaging, Status/Channels, and real-time calling are staged in later phases so the call-signaling seams exist now without requiring a UI rewrite later. See **[`docs/roadmap.md`](docs/roadmap.md)** for the full staged plan.
+The safety foundation and the core chat features are done. Voice notes, stickers, polls, Status, Channels, voice and video calls, and screen sharing are planned in later phases. See [the roadmap](docs/roadmap.md).
 
 ---
 
-## Contributing
+## Further reading
 
-Contributions are welcome. Start with **[`docs/contributing.md`](docs/contributing.md)** for development setup, crate boundaries, and testing expectations. Please do not open issues that include real phone numbers, JIDs, or message content — use `--export-diagnostics` to produce a safe redacted bundle instead.
+- [Why this project exists](docs/motivation.md)
+- [Getting started](docs/getting-started.md)
+- [Architecture](docs/architecture.md)
+- [Security and account safety](docs/security.md)
+- [Roadmap](docs/roadmap.md)
+- [Contributing](docs/contributing.md)
+- [Original concept brief](concepts_brief.md)
 
 ---
 
 ## License
 
-`GPL-3.0-or-later` — see [`LICENSE`](LICENSE).
+`GPL-3.0-or-later`. See [LICENSE](LICENSE).

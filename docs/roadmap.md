@@ -4,7 +4,7 @@ The work is staged deliberately. Early phases establish safety gates and the cal
 
 ## Phase 0 — Foundation & safety gates ✅ (implemented)
 
-- Trademark-clean identity (`Kestrel Companion`, `io.github.rabimba.kestrel`) and GPL-3.0-or-later license.
+- A consistent public identity (`whatsnative`, `io.github.rabimba.whatsnative`) and the GPL-3.0-or-later license.
 - Hexagonal Rust workspace with zero wire types crossing crate boundaries.
 - Dual SQLCipher store split: cryptographic/sync state vs. rebuildable application vault, with an additive-only rollback guard.
 - Ed25519-verifiable `CompatManifest` + feature kill switches checked before connecting.

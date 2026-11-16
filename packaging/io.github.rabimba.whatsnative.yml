@@ -1,4 +1,4 @@
-app-id: io.github.rabimba.kestrel
+app-id: io.github.rabimba.whatsnative
 runtime: org.gnome.Platform
 runtime-version: '47'
 sdk: org.gnome.Sdk
@@ -30,8 +30,8 @@ modules:
     build-commands:
       - cargo --offline build --release --bin whatsnative
       - install -Dm755 target/release/whatsnative /app/bin/whatsnative
-      - install -Dm644 packaging/io.github.rabimba.kestrel.desktop /app/share/applications/io.github.rabimba.kestrel.desktop
-      - install -Dm644 packaging/io.github.rabimba.kestrel.metainfo.xml /app/share/metainfo/io.github.rabimba.kestrel.metainfo.xml
+      - install -Dm644 packaging/io.github.rabimba.whatsnative.desktop /app/share/applications/io.github.rabimba.whatsnative.desktop
+      - install -Dm644 packaging/io.github.rabimba.whatsnative.metainfo.xml /app/share/metainfo/io.github.rabimba.whatsnative.metainfo.xml
     sources:
       - type: dir
         path: ..

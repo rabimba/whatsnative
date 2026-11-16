@@ -237,7 +237,7 @@ fn build_and_present_ui(
         .icon_name("security-high-symbolic")
         .title("Unofficial Linux Companion Notice")
         .description(
-            "Kestrel Companion is an independent, open-source native Linux client and is not affiliated with or endorsed by WhatsApp or Meta.\n\n\
+            "whatsnative is an independent, open-source native Linux client and is not affiliated with or endorsed by WhatsApp or Meta.\n\n\
              • Built-in safety guardrails: human-paced rate limiting, sender-key retry-storm quarantine, and instant 405/TemporaryBan offline circuit breakers.\n\
              • All messages, search indexes, and cached media are encrypted at rest with SQLCipher + ChaCha20-Poly1305.",
         )
@@ -998,7 +998,7 @@ fn wire_window_actions(ctrl: &Rc<AppController>) {
     {
         let c = ctrl.clone();
         act_diag.connect_activate(move |_, _| {
-            let out_path = c.layout.state_log_dir.join("kestrel-diagnostics.json");
+            let out_path = c.layout.state_log_dir.join("whatsnative-diagnostics.json");
             let counters = c
                 .session
                 .borrow()

@@ -2992,7 +2992,7 @@ impl MockCompanionAdapter {
                 timestamp_ms: base_ts,
                 delivery: DeliveryState::Read,
                 content: MessageContent::Text {
-                    body: "Welcome to Kestrel Companion (--mock offline mode)! Zero WebView, native GTK4 + libadwaita + SQLCipher FTS5.".into(),
+                    body: "Welcome to whatsnative (--mock offline mode)! Zero WebView, native GTK4 + libadwaita + SQLCipher FTS5.".into(),
                     edited_at: None,
                     link_preview: None,
                 },

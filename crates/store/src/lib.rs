@@ -4295,7 +4295,7 @@ mod tests {
         let media_dir = dir.join("media");
         let key = [42u8; 32];
 
-        let secret_phrase = "TOPSECRET_KESTREL_VAULT_PLAINTEXT_CANARY_998877";
+        let secret_phrase = "TOPSECRET_WHATSNATIVE_VAULT_PLAINTEXT_CANARY_998877";
         {
             let store = VaultStore::open_encrypted(&db_path, &media_dir, &key).unwrap();
             store
@@ -4323,7 +4323,7 @@ mod tests {
                 .unwrap();
 
             let hits = store
-                .search_messages("TOPSECRET_KESTREL", None, 10)
+                .search_messages("TOPSECRET_WHATSNATIVE", None, 10)
                 .unwrap();
             assert_eq!(hits.len(), 1);
         }
@@ -4335,8 +4335,8 @@ mod tests {
                 let raw_bytes = fs::read(&candidate).unwrap();
                 assert!(
                     !raw_bytes
-                        .windows(b"TOPSECRET_KESTREL".len())
-                        .any(|w| w == b"TOPSECRET_KESTREL"),
+                        .windows(b"TOPSECRET_WHATSNATIVE".len())
+                        .any(|w| w == b"TOPSECRET_WHATSNATIVE"),
                     "plaintext canary leaked into {ext}!"
                 );
             }

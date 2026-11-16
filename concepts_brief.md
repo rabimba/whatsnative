@@ -3,6 +3,8 @@
 * **Author:** Rabimba Karanjai
 * **Date:** 2026-11-09
 
+> **Naming note:** This brief was written before a public name was chosen. The author has since decided to publish the project as **whatsnative**, with app ID `io.github.rabimba.whatsnative`. References below to choosing or replacing a name are historical; the final name is whatsnative. It remains an independent project that is not affiliated with WhatsApp LLC or Meta.
+
 ## Overview
 
 Linux desktop users currently lack an official native WhatsApp desktop application. Existing workarounds rely on browser tabs, Electron or system-webview wrappers around WhatsApp Web, or self-hosted chat bridges. Browser wrappers consume hundreds of megabytes of idle memory, depend on active web sessions rather than a fast local search database, and miss native desktop calling capabilities available on macOS.

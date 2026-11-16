@@ -1,6 +1,6 @@
 # Architecture
 
-Kestrel Companion is a local-first, hexagonal Rust workspace. The central rule is that **wire-protocol types, database types, D-Bus types, and GTK types never cross into each other's layers**. Everything communicates through the pure contracts in `whatsnative-domain`.
+whatsnative is a local-first, hexagonal Rust workspace. The central rule is that **wire-protocol types, database types, D-Bus types, and GTK types never cross into each other's layers**. Everything communicates through the pure contracts in `whatsnative-domain`.
 
 ## Workspace map
 
@@ -105,4 +105,4 @@ InboundDurabilityHook ──► raw protobuf + projection committed to vault ─
 
 ## Packaging
 
-`packaging/` contains a Flatpak manifest (`io.github.rabimba.kestrel.yml`), a `.desktop` entry, and AppStream metainfo. The manifest uses the GNOME 47 platform and the Rust SDK extension, grants only the necessary portal/D-Bus talks, and installs the binary plus desktop metadata. Distribution is intended through fast-updating publisher channels, not frozen distro archives (see [`motivation.md`](motivation.md)).
+`packaging/` contains a Flatpak manifest (`io.github.rabimba.whatsnative.yml`), a `.desktop` entry, and AppStream metainfo. The manifest uses the GNOME 47 platform and the Rust SDK extension, grants only the necessary portal/D-Bus talks, and installs the binary plus desktop metadata. Distribution is intended through fast-updating publisher channels, not frozen distro archives (see [`motivation.md`](motivation.md)).

@@ -28,7 +28,7 @@ use zbus::zvariant::{ObjectPath, Value};
 
 type HmacSha256 = Hmac<Sha256>;
 
-const APP_DIR_SLUG: &str = "kestrel-companion";
+const APP_DIR_SLUG: &str = "whatsnative";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XdgLayout {
@@ -444,7 +444,7 @@ fn read_machine_seal_material() -> Vec<u8> {
         .or_else(|_| fs::read_to_string("/var/lib/dbus/machine-id"))
         .unwrap_or_else(|_| "fallback-linux-companion-host".to_string());
     let uid = env::var("USER").unwrap_or_else(|_| "linux-user".to_string());
-    format!("kestrel-seal:{}:{uid}", machine_id.trim()).into_bytes()
+    format!("whatsnative-seal:{}:{uid}", machine_id.trim()).into_bytes()
 }
 
 /// Sends a native Freedesktop desktop notification via `org.freedesktop.Notifications`.
@@ -589,7 +589,7 @@ impl RedactedDiagnosticsRing {
         Self {
             lines: Arc::new(Mutex::new(VecDeque::with_capacity(max_lines))),
             max_lines,
-            log_file: state_log_dir.join("kestrel-sanitized.log"),
+            log_file: state_log_dir.join("whatsnative-sanitized.log"),
         }
     }
 

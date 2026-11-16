@@ -1,4 +1,4 @@
-//! `whatsnative` (`Kestrel Companion`) binary entrypoint.
+//! `whatsnative` binary entrypoint.
 //! Initializes XDG Base Directories (`0700`), probes D-Bus desktop capabilities,
 //! supports headless `--export-diagnostics <file.json>`, and launches the native
 //! GTK4 + `libadwaita 1.5` desktop application.
@@ -42,16 +42,16 @@ fn main() -> Result<()> {
     diagnostics.record_sanitized_event(
         "startup",
         if cli.mock_mode {
-            "Initializing Kestrel Companion in --mock offline fixture mode"
+            "Initializing whatsnative in --mock offline fixture mode"
         } else {
-            "Initializing Kestrel Companion"
+            "Initializing whatsnative"
         },
     );
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(4)
         .enable_all()
-        .thread_name("kestrel-tokio")
+        .thread_name("whatsnative-tokio")
         .build()?;
 
     let caps = runtime.block_on(DesktopCapabilities::probe_live());

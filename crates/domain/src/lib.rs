@@ -18,8 +18,8 @@ pub const PARSER_SCHEMA_VERSION: i32 = 1;
 
 /// Public display name used in `.desktop` and AppStream metadata to comply with
 /// Flathub third-party trademark policy (no `"WhatsApp"` or `"Whats*"` branding).
-pub const PUBLIC_APP_TITLE: &str = "Kestrel Companion";
-pub const PUBLIC_APP_ID: &str = "io.github.rabimba.kestrel";
+pub const PUBLIC_APP_TITLE: &str = "whatsnative";
+pub const PUBLIC_APP_ID: &str = "io.github.rabimba.whatsnative";
 
 /// Immutable internal identifier for a contact or participant, decoupling all UI
 /// and search records from `@s.whatsapp.net` vs. `@lid` wire JIDs.

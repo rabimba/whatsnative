@@ -1,6 +1,6 @@
 # Getting started
 
-This guide covers building, running, and configuring Kestrel Companion (`whatsnative`).
+This guide covers building, running, and configuring whatsnative.
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ Useful things to try:
 To keep the demo fully isolated from your real profile:
 
 ```bash
-cargo run -p whatsnative -- --mock --profile-dir /tmp/kestrel-demo
+cargo run -p whatsnative -- --mock --profile-dir /tmp/whatsnative-demo
 ```
 
 ## Pair a real device
@@ -85,32 +85,32 @@ A locked keyring at boot is treated as `VaultLocked`, never `Unpaired`, so your 
 
 ```bash
 # Export a zero-PII diagnostic bundle (works without a display)
-cargo run -p whatsnative -- --mock --export-diagnostics /tmp/kestrel-diag.json
+cargo run -p whatsnative -- --mock --export-diagnostics /tmp/whatsnative-diag.json
 
 # Audit a vault's integrity / data attribution
-cargo run -p whatsnative -- --inspect-data --profile-dir /tmp/kestrel-demo
+cargo run -p whatsnative -- --inspect-data --profile-dir /tmp/whatsnative-demo
 ```
 
 ## Where files live
 
-Paths follow the XDG Base Directory spec under the `kestrel-companion` slug:
+Paths follow the XDG Base Directory spec under the `whatsnative` slug:
 
 | Purpose | Location |
 | :--- | :--- |
-| Application data & vault | `$XDG_DATA_HOME/kestrel-companion/` |
-| Encrypted logs & diagnostics state | `$XDG_STATE_HOME/kestrel-companion/` |
-| Media cache & staged chunks | `$XDG_CACHE_HOME/kestrel-companion/` |
-| (No PII) config | `$XDG_CONFIG_HOME/kestrel-companion/` |
+| Application data & vault | `$XDG_DATA_HOME/whatsnative/` |
+| Encrypted logs & diagnostics state | `$XDG_STATE_HOME/whatsnative/` |
+| Media cache & staged chunks | `$XDG_CACHE_HOME/whatsnative/` |
+| (No PII) config | `$XDG_CONFIG_HOME/whatsnative/` |
 
 All directories are created with `0700` permissions. `--profile-dir <DIR>` overrides all four roots at once, which is ideal for tests and parallel profiles.
 
 ## Flatpak build
 
-A Flatpak manifest is provided at `packaging/io.github.rabimba.kestrel.yml` (GNOME 47 platform + Rust SDK extension):
+A Flatpak manifest is provided at `packaging/io.github.rabimba.whatsnative.yml` (GNOME 47 platform + Rust SDK extension):
 
 ```bash
-flatpak-builder --user --install --force-clean build-dir packaging/io.github.rabimba.kestrel.yml
-flatpak run io.github.rabimba.kestrel
+flatpak-builder --user --install --force-clean build-dir packaging/io.github.rabimba.whatsnative.yml
+flatpak run io.github.rabimba.whatsnative
 ```
 
 ## Troubleshooting

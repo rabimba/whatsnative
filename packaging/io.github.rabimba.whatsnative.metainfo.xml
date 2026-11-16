@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rabimba.kestrel</id>
-  <name>Kestrel Companion</name>
+  <id>io.github.rabimba.whatsnative</id>
+  <name>whatsnative</name>
   <summary>Native GTK4 + libadwaita companion messaging client for Linux</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
@@ -10,17 +10,17 @@
   </developer>
   <description>
     <p>
-      Kestrel Companion (binary: whatsnative) is a compiled, zero-WebView native Linux
+      whatsnative is a compiled, zero-WebView native Linux
       companion messaging desktop client built with Rust, GTK4, libadwaita, SQLCipher,
       and XDG Desktop Portals.
     </p>
     <p>
-      Disclaimer: Kestrel Companion is an independent third-party open-source project
+      Disclaimer: whatsnative is an independent third-party open-source project
       and is not affiliated with, authorized, maintained, sponsored, or endorsed by
       WhatsApp LLC or Meta Platforms, Inc.
     </p>
   </description>
-  <launchable type="desktop-id">io.github.rabimba.kestrel.desktop</launchable>
+  <launchable type="desktop-id">io.github.rabimba.whatsnative.desktop</launchable>
   <provides>
     <binary>whatsnative</binary>
   </provides>

@@ -1,6 +1,6 @@
 # Security & account-safety model
 
-This document describes the threat model behind Kestrel Companion and the concrete guardrails implemented in the code. **Read it before pairing a personal phone number.**
+This document describes the threat model behind whatsnative and the concrete guardrails implemented in the code. **Read it before pairing a personal phone number.**
 
 ## Threat model
 
@@ -51,4 +51,4 @@ If you believe you have found a security or account-safety issue, please do **no
 
 ## Scope limits
 
-Kestrel Companion is an independent project and is not affiliated with WhatsApp LLC or Meta. It does not provide, and will not provide, bypasses of official companion privacy restrictions (for example opening/sending View-Once media), cloud relay services, or telemetry containing personal data.
+whatsnative is an independent project and is not affiliated with WhatsApp LLC or Meta. It does not provide, and will not provide, bypasses of official companion privacy restrictions (for example opening/sending View-Once media), cloud relay services, or telemetry containing personal data.

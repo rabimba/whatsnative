@@ -1,6 +1,6 @@
 # Motivation
 
-*Why Kestrel Companion (`whatsnative`) exists, and why it is built the way it is.*
+*Why whatsnative exists, and why it is built the way it is.*
 
 ## The problem
 
@@ -40,7 +40,7 @@ So "zero webview" was never the only goal. The deeper goal is **account safety b
 - Unrecognized server rejections trip an **automatic circuit breaker** into offline read-only mode instead of retrying.
 - Outbound commands pass through a **human-paced token bucket** with jitter, plus per-group retry quarantine, to avoid velocity-based flags.
 - Distribution is intended through **fast-updating channels** (Flatpak/AppImage), never frozen distro archives.
-- The public brand is **trademark-clean** (`Kestrel Companion`, `io.github.rabimba.kestrel`).
+- The app has one consistent public name and ID (`whatsnative`, `io.github.rabimba.whatsnative`).
 
 ## Why local-first and why so defensive about storage
 
