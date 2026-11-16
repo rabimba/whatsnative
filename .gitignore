@@ -1,5 +1,6 @@
 # Build artifacts
 /target
+/build-dir
 **/*.rs.bk
 
 # Local databases / WAL sidecars

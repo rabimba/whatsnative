@@ -53,7 +53,7 @@ All four layers must stay independent. Check the dependency direction in [`archi
 
 - Unit tests for pure logic live next to the code (see `cli.rs` for an example).
 - UI workflows should be reproducible with `--mock` and an isolated `--profile-dir`.
-- For persistence changes, verify the rebuild path (FTS5 index regeneration from canonical rows) and the rollback guard (`CryptoSchemaGuard`).
+- For persistence changes, verify that FTS5 rows stay consistent through merges, edits, and deletes, and that the rollback guard (`CryptoSchemaGuard`) still blocks downgrades.
 
 ## Reporting security or account-safety issues
 
@@ -67,7 +67,7 @@ Attach the redacted bundle and contact the maintainer privately through GitHub. 
 
 ## Design documents
 
-The original concept and risk analysis live in [`../concepts_brief.md`](../concepts_brief.md). Substantial design work should be recorded under `docs/superpowers/specs/` following the project's design-doc convention.
+The original concept and risk analysis live in [`../concepts_brief.md`](../concepts_brief.md). Record substantial design work as a dated Markdown document in this `docs/` directory and link it here.
 
 ## License
 

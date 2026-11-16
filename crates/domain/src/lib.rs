@@ -21,6 +21,17 @@ pub const PARSER_SCHEMA_VERSION: i32 = 1;
 pub const PUBLIC_APP_TITLE: &str = "whatsnative";
 pub const PUBLIC_APP_ID: &str = "io.github.rabimba.whatsnative";
 
+/// Ed25519 public key pinned at build time. Only a manifest signed by the
+/// matching private key can authorize a connection or a feature kill switch.
+pub const COMPAT_VERIFYING_KEY: [u8; 32] = [
+    0x7e, 0xb5, 0xc9, 0x59, 0x6c, 0xad, 0x34, 0xa2, 0x4b, 0x35, 0x34, 0x7b, 0x82, 0x87, 0xe7, 0xef,
+    0xe7, 0x42, 0xed, 0xd8, 0x35, 0x55, 0x23, 0xb4, 0x1b, 0xee, 0x4a, 0xb0, 0xaf, 0x47, 0xc5, 0x36,
+];
+
+/// Compatibility manifest compiled into the binary, so the safety gate works
+/// even when the network is down.
+pub const BUNDLED_COMPAT_MANIFEST_JSON: &str = include_str!("../../../compat/compat_manifest.json");
+
 /// Immutable internal identifier for a contact or participant, decoupling all UI
 /// and search records from `@s.whatsapp.net` vs. `@lid` wire JIDs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -421,6 +432,26 @@ pub enum VaultLifecycleState {
     },
 }
 
+impl VaultLifecycleState {
+    /// A short, PII-free label for diagnostics and logs.
+    ///
+    /// Never include account JIDs, push names, pairing codes, QR payloads or
+    /// quarantine reasons here: these strings are written to the on-disk
+    /// "sanitized" diagnostic log.
+    pub fn redacted_summary(&self) -> &'static str {
+        match self {
+            Self::VaultLocked { .. } => "vault_locked",
+            Self::ConsentRequired => "consent_required",
+            Self::Quarantined { .. } => "quarantined",
+            Self::Unpaired => "unpaired",
+            Self::Pairing { .. } => "pairing",
+            Self::Connecting => "connecting",
+            Self::Connected { .. } => "connected",
+            Self::OfflineReadOnly { .. } => "offline_read_only",
+        }
+    }
+}
+
 /// Per-subsystem feature flags controlled by `CompatManifest` so broken `MEX` Channels
 /// or Status schemas can be disabled independently without interrupting 1:1/group E2EE chat.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -535,6 +566,49 @@ impl CompatManifest {
             };
         }
         CompatDecision::Allowed
+    }
+}
+
+/// Loads the signed manifest bundled into the binary. A corrupt artifact fails
+/// closed: the returned manifest keeps the app in offline read-only mode.
+pub fn bundled_compat_manifest() -> CompatManifest {
+    match serde_json::from_str::<CompatManifest>(BUNDLED_COMPAT_MANIFEST_JSON) {
+        Ok(manifest) => manifest,
+        Err(_) => CompatManifest {
+            kill_switch_active: true,
+            kill_switch_reason: Some(
+                "Bundled compatibility manifest is corrupt; refusing to connect".to_string(),
+            ),
+            ..CompatManifest::default_local()
+        },
+    }
+}
+
+/// Outcome of checking a manifest's authenticity before connecting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompatVerification {
+    Verified,
+    /// Only returned when the caller explicitly opted out of verification.
+    Overridden {
+        reason: String,
+    },
+}
+
+/// Authenticates the compatibility manifest before any network work is done.
+/// An invalid signature is fatal unless the user explicitly opted out with
+/// `--allow-unverified-protocol`.
+pub fn verify_compat_manifest(
+    manifest: &CompatManifest,
+    allow_unverified: bool,
+) -> anyhow::Result<CompatVerification> {
+    match manifest.verify_ed25519(&COMPAT_VERIFYING_KEY) {
+        Ok(()) => Ok(CompatVerification::Verified),
+        Err(err) if allow_unverified => Ok(CompatVerification::Overridden {
+            reason: err.to_string(),
+        }),
+        Err(err) => Err(anyhow::anyhow!(
+            "Compatibility manifest signature check failed; refusing to open a WhatsApp socket: {err}"
+        )),
     }
 }
 
@@ -708,6 +782,59 @@ mod tests {
                 waveform: None,
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn lifecycle_redacted_summary_never_exposes_account_or_pairing_pii() {
+        let jid = "14155550199@s.whatsapp.net";
+        let name = "Rabimba Karanjai";
+        let qr = "2-ABCDEF@ABCDEFGH";
+        let code = "ABCDEF12";
+
+        let connected = VaultLifecycleState::Connected {
+            account_jid: jid.to_string(),
+            push_name: name.to_string(),
+        }
+        .redacted_summary();
+        let pairing = VaultLifecycleState::Pairing {
+            qr_payload: Some(qr.to_string()),
+            pair_code: Some(code.to_string()),
+            expires_in_secs: 60,
+        }
+        .redacted_summary();
+
+        for summary in [connected, pairing] {
+            assert!(!summary.contains(jid));
+            assert!(!summary.contains(name));
+            assert!(!summary.contains(qr));
+            assert!(!summary.contains(code));
+        }
+        assert!(connected.contains("connected"));
+        assert!(pairing.contains("pairing"));
+    }
+
+    #[test]
+    fn bundled_compat_manifest_verifies_against_the_pinned_key() {
+        let manifest = bundled_compat_manifest();
+        manifest
+            .verify_ed25519(&COMPAT_VERIFYING_KEY)
+            .expect("the bundled manifest must be signed by the pinned key");
+        assert_eq!(
+            manifest.evaluate(env!("CARGO_PKG_VERSION"), "0.7.0"),
+            CompatDecision::Allowed
+        );
+    }
+
+    #[test]
+    fn tampered_manifest_is_rejected_unless_explicitly_overridden() {
+        let mut manifest = bundled_compat_manifest();
+        manifest.min_safe_app_version = "9.9.9".to_string();
+
+        assert!(verify_compat_manifest(&manifest, false).is_err());
+        assert!(matches!(
+            verify_compat_manifest(&manifest, true),
+            Ok(CompatVerification::Overridden { .. })
         ));
     }
 }

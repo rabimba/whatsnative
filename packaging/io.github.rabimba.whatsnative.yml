@@ -28,7 +28,7 @@ modules:
   - name: whatsnative
     buildsystem: simple
     build-commands:
-      - cargo --offline build --release --bin whatsnative
+      - cargo build --release --bin whatsnative
       - install -Dm755 target/release/whatsnative /app/bin/whatsnative
       - install -Dm644 packaging/io.github.rabimba.whatsnative.desktop /app/share/applications/io.github.rabimba.whatsnative.desktop
       - install -Dm644 packaging/io.github.rabimba.whatsnative.metainfo.xml /app/share/metainfo/io.github.rabimba.whatsnative.metainfo.xml

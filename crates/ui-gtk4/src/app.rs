@@ -14,10 +14,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 use whatsnative_adapter_wa::{LiveWhatsAppAdapter, MockCompanionAdapter};
 use whatsnative_domain::{
-    ActiveCallBanner, CompatManifest, ConversationId, ConversationKind, ConversationSummary,
-    DeliveryState, DiagnosticCounterSnapshot, DomainEvent, EngineCommand, HistorySyncStats,
-    LinkPreviewCard, MediaKind, MessageContent, PUBLIC_APP_ID, PUBLIC_APP_TITLE,
-    PeerIdentityRecord, ProtocolEnginePort, QuotedReplyRef, TimelineMessage, VaultLifecycleState,
+    ActiveCallBanner, ConversationId, ConversationKind, ConversationSummary, DeliveryState,
+    DiagnosticCounterSnapshot, DomainEvent, EngineCommand, HistorySyncStats, LinkPreviewCard,
+    MediaKind, MessageContent, PUBLIC_APP_ID, PUBLIC_APP_TITLE, PeerIdentityRecord,
+    ProtocolEnginePort, QuotedReplyRef, TimelineMessage, VaultLifecycleState,
+    bundled_compat_manifest,
 };
 use whatsnative_platform_xdg::{
     CloseWindowPolicy, DesktopCapabilities, KeyUnlockOutcome, KeystoreManager,
@@ -1103,7 +1104,7 @@ impl AppController {
                 vault.clone(),
                 self.layout.crypto_db_path.clone(),
                 self.layout.crypto_guard_path.clone(),
-                CompatManifest::default_local(),
+                bundled_compat_manifest(),
                 self.cli.allow_unverified_protocol,
                 self.event_tx.clone(),
             ));
@@ -1177,8 +1178,10 @@ impl AppController {
     fn handle_domain_event(self: &Rc<Self>, ev: DomainEvent) {
         match ev {
             DomainEvent::LifecycleChanged(state) => {
-                self.diagnostics
-                    .record_sanitized_event("lifecycle", &format!("State -> {:?}", state));
+                self.diagnostics.record_sanitized_event(
+                    "lifecycle",
+                    &format!("State -> {}", state.redacted_summary()),
+                );
                 self.transition_lifecycle(state);
             }
             DomainEvent::ConversationsUpdated(list) => {

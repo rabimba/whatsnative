@@ -569,9 +569,11 @@ pub struct RedactedDiagnosticsRing {
     lines: Arc<Mutex<VecDeque<String>>>,
     max_lines: usize,
     log_file: PathBuf,
+    /// Per-ring salt used for write-time and export-time identifier hashing.
+    salt: [u8; 32],
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RedactedDiagnosticBundle {
     pub exported_at_rfc3339: String,
     pub app_id: &'static str,
@@ -586,20 +588,21 @@ impl RedactedDiagnosticsRing {
     pub fn new(state_log_dir: &Path, max_lines: usize) -> Self {
         let _ = fs::create_dir_all(state_log_dir);
         enforce_0700(state_log_dir);
+        let mut salt = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut salt);
         Self {
             lines: Arc::new(Mutex::new(VecDeque::with_capacity(max_lines))),
             max_lines,
             log_file: state_log_dir.join("whatsnative-sanitized.log"),
+            salt,
         }
     }
 
     pub fn record_sanitized_event(&self, category: &str, detail_no_pii: &str) {
-        let line = format!(
-            "{} [{}] {}",
-            Utc::now().to_rfc3339(),
-            category,
-            detail_no_pii
-        );
+        // Scrub before anything touches disk. The "sanitized" log must never
+        // contain a raw JID, even if a caller passes one by mistake.
+        let detail = scrub_jids_in_line(&self.salt, detail_no_pii);
+        let line = format!("{} [{}] {}", Utc::now().to_rfc3339(), category, detail);
         let mut guard = self.lines.lock().expect("diagnostics mutex poisoned");
         if guard.len() >= self.max_lines {
             guard.pop_front();
@@ -638,21 +641,35 @@ impl RedactedDiagnosticsRing {
         &self,
         output_path: &Path,
         caps: DesktopCapabilities,
-        counters: DiagnosticCounterSnapshot,
+        mut counters: DiagnosticCounterSnapshot,
         sync_stats: HistorySyncStats,
     ) -> Result<()> {
-        let mut salt = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut salt);
+        // The anomaly reason is free-form. Scrub it too, so the bundle is
+        // PII-safe by construction even if a future producer adds a JID.
+        if let Some(reason) = &counters.last_protocol_anomaly {
+            counters.last_protocol_anomaly = Some(scrub_jids_in_line(&self.salt, reason));
+        }
 
-        let raw_lines: Vec<String> = {
+        let mut raw_lines: Vec<String> = {
             let guard = self.lines.lock().expect("diagnostics mutex poisoned");
             guard.iter().cloned().collect()
         };
 
-        // Scrub any stray @s.whatsapp.net / @lid / @g.us tokens defensively on export!
+        // A new process starts with an empty ring. Read the persisted log so the
+        // bundle describes the run that actually failed, not just this export.
+        if let Ok(persisted) = fs::read_to_string(&self.log_file) {
+            for line in persisted.lines() {
+                if !line.trim().is_empty() && !raw_lines.iter().any(|existing| existing == line) {
+                    raw_lines.push(line.to_string());
+                }
+            }
+        }
+
+        // Scrub on export as well, so older log lines written before write-time
+        // scrubbing was introduced are still safe to share.
         let redacted_events = raw_lines
             .into_iter()
-            .map(|line| scrub_jids_in_line(&salt, &line))
+            .map(|line| scrub_jids_in_line(&self.salt, &line))
             .collect();
 
         let bundle = RedactedDiagnosticBundle {
@@ -775,5 +792,112 @@ mod tests {
         assert!(!scrubbed.contains("14155550199"));
         assert!(!scrubbed.contains("1203630"));
         assert!(scrubbed.contains("hmac:"));
+    }
+
+    fn test_caps() -> DesktopCapabilities {
+        DesktopCapabilities {
+            current_desktop: "GNOME".into(),
+            session_type: "wayland".into(),
+            in_flatpak_sandbox: false,
+            portal_desktop_present: true,
+            notification_portal_version: Some(2),
+            background_portal_version: Some(2),
+            secret_portal_version: Some(1),
+            screencast_portal_version: None,
+            status_notifier_host_active: false,
+            secret_service_present: true,
+            secret_service_default_locked: Some(false),
+            close_policy: CloseWindowPolicy::QuitCleanly,
+        }
+    }
+
+    fn test_counters() -> DiagnosticCounterSnapshot {
+        DiagnosticCounterSnapshot {
+            messages_persisted: 0,
+            retry_receipts_quarantined: 0,
+            history_chunks_staged: 0,
+            outbound_commands_paced: 0,
+            call_signals_observed: 0,
+            circuit_breaker_trips: 0,
+            last_protocol_anomaly: None,
+        }
+    }
+
+    #[test]
+    fn diagnostics_ring_scrubs_jids_before_writing_the_log() {
+        let root = env::temp_dir().join(format!(
+            "whatsnative-diag-write-test-{}",
+            rand::random::<u64>()
+        ));
+        let ring = RedactedDiagnosticsRing::new(&root, 20);
+        ring.record_sanitized_event("test", "seen 14155550199@s.whatsapp.net");
+
+        let logged = fs::read_to_string(root.join("whatsnative-sanitized.log")).unwrap();
+        assert!(!logged.contains("14155550199@s.whatsapp.net"));
+        assert!(logged.contains("hmac:"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn export_bundle_scrubs_the_free_form_anomaly_field() {
+        let root = env::temp_dir().join(format!(
+            "whatsnative-diag-anomaly-test-{}",
+            rand::random::<u64>()
+        ));
+        let ring = RedactedDiagnosticsRing::new(&root, 20);
+        let mut counters = test_counters();
+        counters.last_protocol_anomaly =
+            Some("decrypt failed for 14155550199@s.whatsapp.net".to_string());
+        let output = root.join("bundle.json");
+
+        ring.export_bundle(&output, test_caps(), counters, HistorySyncStats::default())
+            .unwrap();
+
+        let raw = fs::read_to_string(&output).unwrap();
+        let bundle: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let anomaly = bundle["protocol_counters"]["last_protocol_anomaly"]
+            .as_str()
+            .unwrap();
+        assert!(!anomaly.contains("14155550199@s.whatsapp.net"));
+        assert!(anomaly.contains("hmac:"));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn export_bundle_reads_and_redacts_the_persisted_log() {
+        let root = env::temp_dir().join(format!(
+            "whatsnative-diag-export-test-{}",
+            rand::random::<u64>()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("whatsnative-sanitized.log"),
+            "2026-01-01T00:00:00Z [test] contact 14155550199@s.whatsapp.net observed\n",
+        )
+        .unwrap();
+
+        let ring = RedactedDiagnosticsRing::new(&root, 20);
+        let output = root.join("bundle.json");
+        ring.export_bundle(
+            &output,
+            test_caps(),
+            test_counters(),
+            HistorySyncStats::default(),
+        )
+        .unwrap();
+
+        let raw = fs::read_to_string(&output).unwrap();
+        let bundle: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let events = bundle["redacted_events"].as_array().unwrap();
+        assert!(events.iter().any(|e| e.as_str().unwrap().contains("hmac:")));
+        assert!(
+            events
+                .iter()
+                .all(|e| !e.as_str().unwrap().contains("14155550199@s.whatsapp.net"))
+        );
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

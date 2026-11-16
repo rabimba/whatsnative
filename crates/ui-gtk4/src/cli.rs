@@ -100,6 +100,7 @@ OPTIONS:
     --phone <DIGITS>                 Request 8-character phone-number companion link code
     --pair-code <CODE>               Optional custom 8-character link code (with --phone)
     --export-diagnostics <FILE.json> Export zero-PII salted-HMAC diagnostic bundle and exit
+    --inspect-data                   Audit vault integrity / data attribution and exit
     --allow-unverified-protocol      Power-user override for CompatManifest safety quarantine
     -h, --help                       Print this help message
     -V, --version                    Print version information

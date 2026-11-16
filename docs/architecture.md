@@ -34,7 +34,7 @@ Defines the vocabulary shared by every crate:
 - **Canonical identity:** `CanonicalPeerId` and `ConversationId` (UUIDv7) decouple UI/search records from wire-level `@s.whatsapp.net` vs `@lid` JIDs.
 - **Timeline model:** `ConversationKind`, `MessageContent`, `TimelineMessage`, `QuotedReplyRef`, `ReactionChip`, `DeliveryState`, `LinkPreviewCard`, `SearchHit`, `HistorySyncStats`.
 - **Call seam:** `ActiveCallBanner`, `CallOutcome`, `Phase2MediaSessionHandle` — call signaling is a first-class domain concept even though SRTP media is Phase 2.
-- **Safety gates:** `CompatManifest` with Ed25519-verifiable signatures, `CompatDecision`, `FeatureFlags`, `semver_at_least()`.
+- **Safety gates:** `CompatManifest` with Ed25519-verifiable signatures, `CompatDecision`, `FeatureFlags`, `semver_at_least()`, plus the bundled signed artifact (`compat/compat_manifest.json`) and pinned verifying key (`COMPAT_VERIFYING_KEY`). `VaultLifecycleState::redacted_summary()` produces PII-free log lines.
 - **Ports:** `ProtocolEnginePort` (async trait) and the `DomainEvent` / `EngineCommand` bus that the UI and adapter exchange.
 - **Lifecycle:** `VaultLifecycleState`, distinguishing `VaultLocked` from `Unpaired` so a locked keyring at boot never looks like a fresh install.
 
@@ -66,11 +66,11 @@ Wraps `whatsapp-rust 0.7.0` (with the `voip-mlow` feature) behind `ProtocolEngin
 
 Safety components:
 
-- **`OutboundRateGuard`** — a token bucket of ≤ 3 req/s sustained, burst 4, plus 40–180 ms randomized jitter, protecting personal accounts from anti-scraper velocity flags.
+- **`OutboundRateGuard`** — a token bucket targeting ≤ 3 req/s sustained, burst 4, plus 40–160 ms randomized jitter, protecting personal accounts from anti-scraper velocity flags. Known limitations: concurrent callers can wake together and some network calls bypass it.
 - **`GroupRetryQuarantine`** — isolates failing group members so one bad recipient does not cause repeated whole-group retries.
 - **Commit-before-ACK hook** (`InboundDurabilityHook`) — persists the message before sending the delivery receipt.
 - **Circuit breakers** for `405` / `TemporaryBan` responses and an `AdapterMetrics` counter set that feeds diagnostics.
-- **`CompatManifest` verification before connecting**, plus a View-Once companion-privacy enforcement path.
+- **`CompatManifest` check before connecting** — `compat_gate_decision()` verifies the bundled artifact's Ed25519 signature against the pinned key, then evaluates kill switches. Failure is a fail-closed `Quarantine` decision before any socket work. Also includes a View-Once companion-privacy enforcement path.
 - **Call signaling** — parses `<call>` offer/ring/reject/answered-elsewhere/missed events into `ActiveCallBanner`s and supports call decline.
 - **`MockCompanionAdapter`** — a deterministic, zero-account fixture archive powering `--mock`.
 

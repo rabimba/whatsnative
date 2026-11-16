@@ -98,8 +98,8 @@ Paths follow the XDG Base Directory spec under the `whatsnative` slug:
 | Purpose | Location |
 | :--- | :--- |
 | Application data & vault | `$XDG_DATA_HOME/whatsnative/` |
-| Encrypted logs & diagnostics state | `$XDG_STATE_HOME/whatsnative/` |
-| Media cache & staged chunks | `$XDG_CACHE_HOME/whatsnative/` |
+| Encrypted logs & diagnostics state | `$XDG_STATE_HOME/whatsnative/logs/` |
+| Media cache & staged chunks | `$XDG_CACHE_HOME/whatsnative/media/` |
 | (No PII) config | `$XDG_CONFIG_HOME/whatsnative/` |
 
 All directories are created with `0700` permissions. `--profile-dir <DIR>` overrides all four roots at once, which is ideal for tests and parallel profiles.

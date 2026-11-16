@@ -8,9 +8,9 @@ This document describes the threat model behind whatsnative and the concrete gua
 | :--- | :--- | :--- |
 | Unofficial protocol drift (version bumps, dictionary changes) | Stale fingerprints / retry loops → **phone-number ban** | `CompatManifest` verified (Ed25519) before any socket opens; per-feature kill switches; offline read-only quarantine |
 | Unknown server rejection (`405`, temporary ban) | Account flags if the client keeps retrying | Circuit breakers halt reconnects and switch to read-only |
-| High outbound velocity | Anti-scraper heuristics flag the account | `OutboundRateGuard` token bucket (≤ 3 req/s, burst 4, 40–180 ms jitter) + `GroupRetryQuarantine` |
+| High outbound velocity | Anti-scraper heuristics flag the account | `OutboundRateGuard` token bucket (target ≤ 3 req/s, burst 4, 40–160 ms jitter) + `GroupRetryQuarantine`. Known limitation: concurrent sends can wake together; see the audit notes. |
 | Binary downgrade | Rewinding Signal ratchets / LTHash counters → MAC failures, forced logout, ban flags | `CryptoSchemaGuard` additive-only ratchet; cryptographic state physically separate from rebuildable vault |
-| Message loss on ACK | Servers delete ciphertext after receipt; unknown fields lost forever | Commit-before-ACK hook stores raw decrypted protobuf with `parser_schema_version`; FTS5 index is rebuildable |
+| Message loss on ACK | Servers delete ciphertext after receipt; unknown fields lost forever | Commit-before-ACK hook stores raw decrypted protobuf with `parser_schema_version`; FTS5 rows are kept consistent through merges and deletes |
 | `@lid` vs phone split-brain | Duplicate threads, missed history | Canonical IDs + atomic alias table in the vault |
 | `HistorySync` loss / storage blow-up | History gone after re-pair; disk exhaustion | Chunk staging, single-writer WAL commits, async indexing, 3 GiB LRU media cache |
 | Local data disclosure | Private chats readable on disk or at the keyring | SQLCipher vault, 0700 XDG dirs, ChaCha20-Poly1305 media cache, zero PII in config |
@@ -19,13 +19,15 @@ This document describes the threat model behind whatsnative and the concrete gua
 
 ## Pre-connect compatibility gate
 
-The `whatsnative-domain` crate defines `CompatManifest`, `CompatDecision`, and `FeatureFlags`. The adapter must verify an Ed25519-signed manifest declaring the minimum safe client version and active feature kill switches **before** opening any WhatsApp socket. If verification fails, the client stays in offline read-only quarantine.
+The `whatsnative-domain` crate defines `CompatManifest`, `CompatDecision`, and `FeatureFlags`. A signed manifest (`compat/compat_manifest.json`) is compiled into the binary. Before any socket, client, or transport work, the adapter verifies its Ed25519 signature against a public key pinned in the source (`COMPAT_VERIFYING_KEY`) and then evaluates the minimum safe client version and any feature kill switches.
+
+Verification fails closed: an unsigned, tampered, or corrupt manifest puts the app in offline read-only quarantine. Updating the manifest requires the project's private signing key; see the comment in `crates/domain/examples/sign_manifest.rs`. The key is deliberately not in this repository.
 
 `--allow-unverified-protocol` deliberately bypasses this gate. It is a **power-user escape hatch**, not a recommended mode: using it forfeits the primary account-safety protection. Never use it on a number you cannot afford to lose.
 
 ## Rate limiting and circuit breakers
 
-- `OutboundRateGuard` is a human-paced token bucket: ≤ 3 requests/second sustained, burst of 4, plus 40–180 ms randomized jitter.
+- `OutboundRateGuard` is a human-paced token bucket targeting ≤ 3 requests/second sustained, burst of 4, plus 40–160 ms randomized jitter. It is not yet applied to every network call, and concurrent callers can wake at the same time.
 - `GroupRetryQuarantine` prevents repeated retries against individual failing members from cascading into whole-group velocity spikes.
 - `AdapterMetrics` and `DiagnosticCounterSnapshot` count paced commands, quarantined receipts, circuit-breaker trips, and protocol anomalies, so operators can see safety events without seeing message content.
 

@@ -8,6 +8,8 @@
   <developer id="io.github.rabimba">
     <name>Rabimba Karanjai</name>
   </developer>
+  <url type="homepage">https://github.com/rabimba/whatsnative</url>
+  <url type="bugtracker">https://github.com/rabimba/whatsnative/issues</url>
   <description>
     <p>
       whatsnative is a compiled, zero-WebView native Linux

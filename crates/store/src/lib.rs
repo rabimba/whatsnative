@@ -2048,16 +2048,44 @@ impl VaultStore {
                     |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
                 )?;
 
+                // A message can arrive under both a phone JID and a @lid with the
+                // same sender + stanza id. UPDATE OR IGNORE would leave that copy in
+                // the dropped thread, where ON DELETE CASCADE would silently delete
+                // a real message. Deduplicate explicitly before moving anything.
                 tx.execute(
-                    "UPDATE OR IGNORE messages SET conversation_id = ?1 WHERE conversation_id = ?2",
+                    "DELETE FROM messages WHERE conversation_id = ?1 AND EXISTS (
+                        SELECT 1 FROM messages k
+                         WHERE k.conversation_id = ?2
+                           AND k.sender_wire_jid = messages.sender_wire_jid
+                           AND k.stanza_id = messages.stanza_id
+                     )",
+                    params![drop_conv, keep],
+                )?;
+                // Drop FTS rows for those deleted messages before repointing the rest.
+                tx.execute(
+                    "DELETE FROM messages_fts WHERE local_id NOT IN (SELECT local_id FROM messages)",
+                    [],
+                )?;
+                tx.execute(
+                    "UPDATE messages SET conversation_id = ?1 WHERE conversation_id = ?2",
                     params![keep, drop_conv],
                 )?;
                 tx.execute(
                     "UPDATE messages_fts SET conversation_id = ?1 WHERE conversation_id = ?2",
                     params![keep, drop_conv],
                 )?;
+                // Reactions share the same composite-key collision shape.
                 tx.execute(
-                    "UPDATE OR IGNORE reactions SET conversation_id = ?1 WHERE conversation_id = ?2",
+                    "DELETE FROM reactions WHERE conversation_id = ?1 AND EXISTS (
+                        SELECT 1 FROM reactions k
+                         WHERE k.conversation_id = ?2
+                           AND k.target_stanza_id = reactions.target_stanza_id
+                           AND k.sender_id = reactions.sender_id
+                     )",
+                    params![drop_conv, keep],
+                )?;
+                tx.execute(
+                    "UPDATE reactions SET conversation_id = ?1 WHERE conversation_id = ?2",
                     params![keep, drop_conv],
                 )?;
                 tx.execute(
@@ -4538,6 +4566,75 @@ mod tests {
         let contacts = store.list_contacts().unwrap();
         assert_eq!(contacts.len(), 1);
         assert_eq!(contacts[0].display_name, "Dr. Barbara Liskov");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn lid_merge_preserves_messages_with_duplicate_stanza_ids() {
+        let dir = temp_test_dir("lid-merge-duplicate-stanza");
+        let store =
+            VaultStore::open_encrypted(&dir.join("vault.db"), &dir.join("media"), &[31u8; 32])
+                .unwrap();
+
+        let record = |chat: &str, stanza: &str, body: &str| InboundCommitRecord {
+            chat_wire_jid: chat.to_string(),
+            chat_alt_jid: None,
+            chat_kind: ConversationKind::DirectMessage,
+            chat_title_hint: None,
+            sender_wire_jid: "self@s.whatsapp.net".to_string(),
+            sender_alt_jid: None,
+            sender_push_name: None,
+            stanza_id: stanza.to_string(),
+            is_from_me: true,
+            timestamp_ms: 1_000,
+            delivery: DeliveryState::Delivered,
+            content: MessageContent::Text {
+                body: body.to_string(),
+                edited_at: None,
+                link_preview: None,
+            },
+            quoted: None,
+            raw_decrypted_proto: vec![1],
+            defer_fts: false,
+        };
+
+        // The same self-authored stanza is visible in both the PN and the LID thread.
+        store
+            .commit_inbound_batch(&[record("14155550100@s.whatsapp.net", "DUP-1", "PN copy")])
+            .unwrap();
+        store
+            .commit_inbound_batch(&[record("9988776655@lid", "DUP-1", "LID copy")])
+            .unwrap();
+        assert_eq!(store.list_conversations().unwrap().len(), 2);
+
+        // A message carrying both identities bridges the two threads.
+        let mut bridge = record("9988776655@lid", "BRIDGE", "bridge");
+        bridge.chat_alt_jid = Some("14155550100@s.whatsapp.net".to_string());
+        store.commit_inbound_batch(&[bridge]).unwrap();
+
+        let convs = store.list_conversations().unwrap();
+        assert_eq!(convs.len(), 1, "threads must merge");
+        let timeline = store.load_timeline_window(convs[0].id, None, 50).unwrap();
+        assert_eq!(
+            timeline.len(),
+            2,
+            "the duplicate stanza is deduplicated, and the bridge message survives"
+        );
+
+        // The cascade-deleted duplicate used to leave a stale FTS row behind,
+        // which made searches return hits that no longer resolve to a message.
+        let conn = store.conn.lock().unwrap();
+        let orphan_fts: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM messages_fts
+                 WHERE local_id NOT IN (SELECT local_id FROM messages)",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(orphan_fts, 0, "no FTS rows may outlive their message");
+        drop(conn);
 
         let _ = fs::remove_dir_all(&dir);
     }

@@ -1,0 +1,16 @@
+{
+  "epoch": 1,
+  "min_safe_app_version": "0.1.0",
+  "min_safe_wa_rust_version": "0.7.0",
+  "issued_at": "2026-11-16T00:00:00Z",
+  "features": {
+    "core_messaging": true,
+    "voice_notes": true,
+    "status_broadcast": true,
+    "channels_mex": true,
+    "voip_calling": true
+  },
+  "kill_switch_active": false,
+  "kill_switch_reason": null,
+  "signature_hex": null
+}

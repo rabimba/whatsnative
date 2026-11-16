@@ -25,7 +25,7 @@ There is another reason to be careful. WhatsApp does not offer a public API for 
 
 So whatsnative is built to **fail safely**:
 
-- It checks a signed compatibility file before it opens a connection.
+- It checks a signed compatibility file (bundled in the app and verified against a built-in key) before it opens a connection. If the check fails, it stays offline instead of connecting.
 - It slows outgoing messages to a human pace.
 - If the server sends something unexpected, it stops reconnecting and switches to read-only mode instead of retrying.
 - It saves each message to your local database before it tells the server it arrived.
@@ -158,8 +158,8 @@ whatsnative follows the XDG folder rules. All folders are created with private (
 | Purpose | Folder |
 | :--- | :--- |
 | App data and encrypted database | `$XDG_DATA_HOME/whatsnative/` |
-| Logs and diagnostics state | `$XDG_STATE_HOME/whatsnative/` |
-| Media cache | `$XDG_CACHE_HOME/whatsnative/` |
+| Logs and diagnostics state | `$XDG_STATE_HOME/whatsnative/logs/` |
+| Media cache | `$XDG_CACHE_HOME/whatsnative/media/` |
 | Settings (no personal data) | `$XDG_CONFIG_HOME/whatsnative/` |
 
 Use `--profile-dir <DIR>` to put all four folders somewhere else.

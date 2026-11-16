@@ -32,8 +32,25 @@ use whatsnative_domain::{
     ActiveCallBanner, CallOutcome, CompatDecision, CompatManifest, ConversationId,
     ConversationKind, DeliveryState, DiagnosticCounterSnapshot, DomainEvent, EngineCommand,
     HistorySyncStats, LinkPreviewCard, MediaKind, MessageContent, PARSER_SCHEMA_VERSION,
-    ProtocolEnginePort, QuotedReplyRef, VaultLifecycleState,
+    ProtocolEnginePort, QuotedReplyRef, VaultLifecycleState, verify_compat_manifest,
 };
+
+/// Authenticates the manifest and evaluates the kill-switch gate. This runs
+/// before any socket, store, or network work in `start_live_session`.
+pub(crate) fn compat_gate_decision(
+    compat: &CompatManifest,
+    allow_unverified: bool,
+) -> CompatDecision {
+    if let Err(err) = verify_compat_manifest(compat, allow_unverified) {
+        return CompatDecision::Quarantine {
+            reason: err.to_string(),
+        };
+    }
+    if allow_unverified {
+        return CompatDecision::Allowed;
+    }
+    compat.evaluate(env!("CARGO_PKG_VERSION"), "0.7.0")
+}
 use whatsnative_store::{
     CURRENT_CRYPTO_READER_VERSION, CryptoSchemaGuard, InboundCommitRecord, VaultStore,
 };
@@ -1291,11 +1308,10 @@ impl LiveWhatsAppAdapter {
             CURRENT_CRYPTO_READER_VERSION,
         )?;
 
-        // 2. Pre-connect Compatibility & Kill-Switch Gate!
-        if !self.allow_unverified_override
-            && let CompatDecision::Quarantine { reason } =
-                self.compat.evaluate(env!("CARGO_PKG_VERSION"), "0.7.0")
-        {
+        // 2. Pre-connect Compatibility & Kill-Switch Gate. The Ed25519
+        // signature is verified here, before any client or transport work.
+        let decision = compat_gate_decision(&self.compat, self.allow_unverified_override);
+        if let CompatDecision::Quarantine { reason } = decision {
             self.metrics.record_anomaly(&reason);
             let _ = self
                 .event_tx
@@ -3610,5 +3626,31 @@ mod tests {
         assert_eq!(&png[png.len() - 8..], b"IEND\xae\x42\x60\x82");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn compat_gate_quarantines_unsigned_or_tampered_manifests() {
+        let signed = whatsnative_domain::bundled_compat_manifest();
+        assert_eq!(
+            compat_gate_decision(&signed, false),
+            CompatDecision::Allowed
+        );
+
+        let unsigned = CompatManifest::default_local();
+        assert!(matches!(
+            compat_gate_decision(&unsigned, false),
+            CompatDecision::Quarantine { .. }
+        ));
+        assert_eq!(
+            compat_gate_decision(&unsigned, true),
+            CompatDecision::Allowed
+        );
+
+        let mut tampered = signed;
+        tampered.kill_switch_active = true;
+        assert!(matches!(
+            compat_gate_decision(&tampered, false),
+            CompatDecision::Quarantine { .. }
+        ));
     }
 }
